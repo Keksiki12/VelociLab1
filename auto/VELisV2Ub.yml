@@ -1,0 +1,97 @@
+---
+- name: Установка и настройка Velociraptor Client на Ubuntu
+  hosts: ubuntu_clients
+  become: yes
+  vars:
+    velociraptor_version: "v0.77.2"
+    install_dir: "/opt/velociraptor"
+    config_dir: "/etc/velociraptor"
+    service_name: "velociraptor"
+    local_config_file: "client.config.yaml"
+
+  tasks:
+    #Проверка наличия client.config.yaml
+    - name: Проверка наличия client.config.yaml рядом с плейбуком
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/{{ local_config_file }}"
+      register: local_config
+
+    - name: Ошибка, если client.config.yaml не найден
+      ansible.builtin.fail:
+        msg: "client.config.yaml не найден в {{ playbook_dir }}. Поместите файл конфигурации рядом с плейбуком."
+      when: not local_config.stat.exists
+
+    # --- Шаг 1: Проверка наличия бинарника (аналог Get-Service) ---
+    - name: Проверка наличия бинарника Velociraptor
+      ansible.builtin.stat:
+        path: "{{ install_dir }}/velociraptor"
+      register: velo_bin
+
+    # --- Шаг 2: Скачивание (только если бинарника нет) ---
+    - name: Создание каталога установки
+      ansible.builtin.file:
+        path: "{{ install_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Скачивание Velociraptor (если отсутствует)
+      ansible.builtin.get_url:
+        url: "https://github.com/Velocidex/velociraptor/releases/download/{{ velociraptor_version }}/velociraptor-{{ velociraptor_version }}-linux-amd64"
+        dest: "{{ install_dir }}/velociraptor"
+        mode: '0755'
+        force: no
+      when: not velo_bin.stat.exists
+
+    # --- Шаг 3: Копирование конфига (только если изменён или отсутствует) ---
+    - name: Создание каталога для конфигурации
+      ansible.builtin.file:
+        path: "{{ config_dir }}"
+        state: directory
+        mode: '0750'
+
+    - name: Копирование client.config.yaml
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/{{ local_config_file }}"
+        dest: "{{ config_dir }}/client.config.yaml"
+        mode: '0640'
+
+    # --- Шаг 4: Создание systemd-юнита (только если его нет) ---
+    - name: Проверка наличия systemd-юнита
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ service_name }}.service"
+      register: unit_file
+
+    - name: Создание systemd-юнита для Velociraptor Client
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ service_name }}.service"
+        content: |
+          [Unit]
+          Description=Velociraptor Client
+          After=network.target
+
+          [Service]
+          Type=simple
+          ExecStart={{ install_dir }}/velociraptor --config {{ config_dir }}/client.config.yaml client -v
+          Restart=always
+          RestartSec=10
+          LimitNOFILE=20000
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      when: not unit_file.stat.exists
+      notify: reload systemd
+
+    # --- Шаг 5: Идемпотентная проверка и запуск службы (аналог Start-Service) ---
+    - name: Обеспечение запуска и автозагрузки службы Velociraptor
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: started
+        enabled: yes
+        daemon_reload: yes
+
+  handlers:
+    - name: reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: yes

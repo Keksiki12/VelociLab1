@@ -1,0 +1,27 @@
+﻿**********************
+Начало записи сценария Windows PowerShell
+Время начала: 20261024090119
+Имя пользователя: HOME-PC\user
+Запуск от имени пользователя: HOME-PC\user
+Имя конфигурации: 
+Компьютер: HOME-PC (Microsoft Windows NT 10.0.19044.0)
+Ведущее приложение: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+ИД процесса: 2416
+PSVersion: 5.1.19041.4894
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.4894
+BuildVersion: 10.0.19041.4894
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Транскрибирование запущено, выходной файл C:\Cli\VelWin/log
+PS C:\Cli> .\VELisV2.ps1 > C:\Cli\VelWin.log 2>&1
+[*] Служба уже установлена.
+[+] Служба уже работает.
+PS C:\Cli> Stop-Transcript
+**********************
+Конец записи протокола Windows PowerShell
+Время окончания: 20261024090139
+**********************
