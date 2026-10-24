@@ -1,0 +1,33 @@
+name: Custom.Detection.NewInTemp
+description: Обнаружение новых исполняемых файлов в TEMP-каталогах Windows и Linux (с алертом)
+author: lab
+type: CLIENT
+
+sources:
+  - name: NewInTemp
+    query: |
+      SELECT OSPath AS FullPath,
+             Size,
+             Mtime,
+             hash(path=OSPath).MD5 AS MD5,
+             alert(
+               name="New executable in TEMP: " + OSPath,
+               dedup=-1,
+               Level="HIGH",
+               FullPath=OSPath,
+               Size=Size,
+               Mtime=Mtime,
+               MD5=hash(path=OSPath).MD5
+             ) AS AlertSent
+      FROM glob(globs=[
+        "C:/Users/user/AppData/Local/Temp/**",
+        "C:/Windows/Temp/**",
+        "/tmp/**",
+        "/var/tmp/**"
+      ])
+      WHERE NOT IsDir
+        AND Mtime > timestamp(epoch=now() - 86400)
+        AND (
+          OSPath =~ "(?i)(\\.exe|\\.dll|\\.ps1|\\.bat|\\.vbs)$"
+          OR (OSPath =~ "^/" AND Size > 102400)
+        )
